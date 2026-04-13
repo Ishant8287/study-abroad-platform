@@ -6,7 +6,7 @@ async function startServer() {
   await connectDatabase();
 
   app.listen(env.port, () => {
-    console.log(`Waygood evaluation API running on port ${env.port}`);
+    console.log(`Study Abroad Platform API running on port ${env.port}`);
   });
 }
 
