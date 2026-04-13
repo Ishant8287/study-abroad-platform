@@ -4,7 +4,7 @@ const getHealth = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: {
-      service: "waygood-evaluation-api",
+      service: "study-abroad-platform-api",
       timestamp: new Date().toISOString(),
       status: "ok",
     },
