@@ -1,5 +1,6 @@
-﻿const cors = require("cors");
+const cors = require("cors");
 const express = require("express");
+const helmet = require("helmet");
 const morgan = require("morgan");
 
 const applicationRoutes = require("./routes/applicationRoutes");
@@ -11,12 +12,27 @@ const recommendationRoutes = require("./routes/recommendationRoutes");
 const universityRoutes = require("./routes/universityRoutes");
 const errorHandler = require("./middleware/errorHandler");
 const notFound = require("./middleware/notFound");
+const sanitizeBody = require("./middleware/sanitize");
+const env = require("./config/env");
 
 const app = express();
 
-app.use(cors());
+// Security headers
+app.use(helmet());
+
+app.use(cors({
+  origin: env.corsOrigin,
+  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+}));
 app.use(express.json());
-app.use(morgan("dev"));
+
+// Sanitize every incoming JSON body to strip HTML/script tags (XSS prevention)
+app.use(sanitizeBody);
+
+// Use compact 'combined' log format in production; verbose 'dev' format otherwise
+app.use(morgan(env.nodeEnv === "production" ? "combined" : "dev"));
 
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);

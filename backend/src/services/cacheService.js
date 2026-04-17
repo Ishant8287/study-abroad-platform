@@ -6,7 +6,7 @@ class MemoryCacheService {
     this.store = new Map();
   }
 
-  async get(key) {
+  async getRecord(key) {
     const record = this.store.get(key);
 
     if (!record) {
@@ -18,7 +18,15 @@ class MemoryCacheService {
       return null;
     }
 
-    return record.value;
+    return {
+      value: record.value,
+      ttlSeconds: Math.max(Math.ceil((record.expiresAt - Date.now()) / 1000), 1),
+    };
+  }
+
+  async get(key) {
+    const record = await this.getRecord(key);
+    return record ? record.value : null;
   }
 
   async set(key, value, ttlSeconds = env.cacheTtlSeconds) {
@@ -55,18 +63,36 @@ class RedisCacheService {
     }
   }
 
-  async get(key) {
+  async getRecord(key) {
     if (!this.connected) {
       return null;
     }
 
     try {
-      const value = await this.client.get(key);
-      return value ? JSON.parse(value) : null;
+      const [value, ttlSeconds] = await this.client
+        .multi()
+        .get(key)
+        .ttl(key)
+        .exec()
+        .then((responses) => responses.map(([, result]) => result));
+
+      if (value === null) {
+        return null;
+      }
+
+      return {
+        value: JSON.parse(value),
+        ttlSeconds: ttlSeconds > 0 ? ttlSeconds : env.cacheTtlSeconds,
+      };
     } catch (error) {
       console.warn("Redis get failed. Serving from in-memory cache.", error.message);
       return null;
     }
+  }
+
+  async get(key) {
+    const record = await this.getRecord(key);
+    return record ? record.value : null;
   }
 
   async set(key, value, ttlSeconds = env.cacheTtlSeconds) {
@@ -127,10 +153,19 @@ class CacheService {
 
   async get(key) {
     if (this.provider === "redis" && this.redis) {
-      const redisValue = await this.redis.get(key);
-      if (redisValue !== null) {
-        return redisValue;
+      const redisRecord = await this.redis.getRecord(key);
+      if (redisRecord !== null) {
+        await this.memory.set(key, redisRecord.value, redisRecord.ttlSeconds);
+        return redisRecord.value;
       }
+
+      const memoryRecord = await this.memory.getRecord(key);
+      if (memoryRecord !== null) {
+        await this.redis.set(key, memoryRecord.value, memoryRecord.ttlSeconds);
+        return memoryRecord.value;
+      }
+
+      return null;
     }
 
     return this.memory.get(key);
@@ -160,3 +195,6 @@ class CacheService {
 }
 
 module.exports = new CacheService();
+module.exports.CacheService = CacheService;
+module.exports.MemoryCacheService = MemoryCacheService;
+module.exports.RedisCacheService = RedisCacheService;

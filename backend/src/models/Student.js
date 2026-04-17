@@ -1,4 +1,4 @@
-﻿const bcrypt = require("bcryptjs");
+const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
 
 const studentSchema = new mongoose.Schema(
@@ -22,7 +22,7 @@ const studentSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["student", "counselor"],
+      enum: ["student", "counselor", "admin"],
       default: "student",
     },
     targetCountries: [String],

@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const asyncHandler = require("../utils/asyncHandler");
 const HttpError = require("../utils/httpError");
 const {
@@ -6,17 +7,7 @@ const {
 } = require("../services/recommendationService");
 const cacheService = require("../services/cacheService");
 
-const getRecommendations = asyncHandler(async (req, res) => {
-  const { studentId } = req.params;
-
-  // Students may only request their own recommendations
-  if (
-    req.user.role === "student" &&
-    req.user._id.toString() !== studentId
-  ) {
-    throw new HttpError(403, "You are not authorised to view these recommendations.");
-  }
-
+async function sendRecommendations(res, studentId) {
   const preferredEngine = getPreferredRecommendationEngine();
   const cacheKey = `recommendations-${studentId}-${preferredEngine}`;
   const cached = await cacheService.get(cacheKey);
@@ -37,6 +28,31 @@ const getRecommendations = asyncHandler(async (req, res) => {
     ...payload,
     meta: { ...payload.meta, cache: "miss" },
   });
+}
+
+const getOwnRecommendations = asyncHandler(async (req, res) => {
+  await sendRecommendations(res, req.user._id.toString());
 });
 
-module.exports = { getRecommendations };
+const getRecommendations = asyncHandler(async (req, res) => {
+  const { studentId } = req.params;
+
+  if (!mongoose.isValidObjectId(studentId)) {
+    throw new HttpError(400, "Invalid studentId.");
+  }
+
+  // Students may only request their own recommendations
+  if (
+    req.user.role === "student" &&
+    req.user._id.toString() !== studentId
+  ) {
+    throw new HttpError(403, "You are not authorised to view these recommendations.");
+  }
+
+  await sendRecommendations(res, studentId);
+});
+
+module.exports = {
+  getOwnRecommendations,
+  getRecommendations,
+};

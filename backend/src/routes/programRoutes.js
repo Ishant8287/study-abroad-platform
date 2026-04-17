@@ -1,9 +1,11 @@
-﻿const express = require("express");
+const express = require("express");
 
-const { listPrograms } = require("../controllers/programController");
+const { getProgramById, listPrograms } = require("../controllers/programController");
+const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
-router.get("/", listPrograms);
+router.get("/", requireAuth, listPrograms);
+router.get("/:id", requireAuth, getProgramById);
 
 module.exports = router;

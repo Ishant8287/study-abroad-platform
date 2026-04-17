@@ -85,7 +85,7 @@ Frontend runs by default on `http://localhost:5173` and expects backend at `http
 |---|---|---|
 | PORT | Server port | 4000 |
 | MONGODB_URI | MongoDB connection string | mongodb://127.0.0.1:27017/study-abroad |
-| JWT_SECRET | Secret for signing JWTs | — |
+| JWT_SECRET | Secret for signing JWTs. Required outside development and test. | — |
 | JWT_EXPIRES_IN | Token expiry | 1d |
 | CACHE_TTL_SECONDS | Cache TTL in seconds | 300 |
 
@@ -117,12 +117,13 @@ Frontend runs by default on `http://localhost:5173` and expects backend at `http
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| GET | /api/programs | No | Filter by country, field, degree, budget, intake |
+| GET | /api/programs | Yes | Filter by country, field, degree, budget, intake |
 
 ### Recommendations
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
+| GET | /api/recommendations/me | Yes | Get the signed-in student's top 5 program matches |
 | GET | /api/recommendations/:studentId | Yes | Aggregation-based top 5 program matches |
 
 ### Applications
@@ -137,7 +138,7 @@ Frontend runs by default on `http://localhost:5173` and expects backend at `http
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| GET | /api/dashboard/overview | No | Total stats + status breakdown + top countries (cached) |
+| GET | /api/dashboard/overview | Yes | Total stats + status breakdown + top countries (cached) |
 
 ---
 

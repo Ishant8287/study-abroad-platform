@@ -36,7 +36,7 @@ export const api = {
   programs: (params) => request(`/programs?${query(params)}`),
 
   dashboard: () => request("/dashboard/overview"),
-  recommendations: (studentId) => request(`/recommendations/${studentId}`),
+  recommendations: (studentId = "me") => request(`/recommendations/${studentId}`),
 
   applications: (params = {}) => request(`/applications?${query(params)}`),
   createApplication: (body) => request("/applications", { method: "POST", body: JSON.stringify(body) }),

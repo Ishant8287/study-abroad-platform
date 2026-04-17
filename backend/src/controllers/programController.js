@@ -1,11 +1,34 @@
-﻿const Program = require("../models/Program");
+const mongoose = require("mongoose");
+const Program = require("../models/Program");
 const asyncHandler = require("../utils/asyncHandler");
+const HttpError = require("../utils/httpError");
 
 function parseBoolean(value) {
   if (value === "true") return true;
   if (value === "false") return false;
   return undefined;
 }
+
+const getProgramById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new HttpError(400, "Invalid program id.");
+  }
+
+  const program = await Program.findById(id)
+    .populate("university", "name country city")
+    .lean();
+
+  if (!program) {
+    throw new HttpError(404, "Program not found.");
+  }
+
+  res.json({
+    success: true,
+    data: program,
+  });
+});
 
 const listPrograms = asyncHandler(async (req, res) => {
   const {
@@ -87,5 +110,6 @@ const listPrograms = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  getProgramById,
   listPrograms,
 };

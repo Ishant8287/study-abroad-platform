@@ -64,13 +64,13 @@ export default function RecommendationsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!user?.id) return;
-    api.recommendations(user.id)
+    if (!user) return;
+    api.recommendations()
       .then((res) => setResult(res.data))
       .catch((err) => setError(err.message));
-  }, [user?.id]);
+  }, [user?.email]);
 
-  if (!user?.id) {
+  if (!user) {
     return (
       <div className="glass-card-static p-lg" style={{ textAlign: "center" }}>
         <p style={{ color: "var(--text-secondary)" }}>No active user.</p>

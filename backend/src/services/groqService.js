@@ -71,36 +71,46 @@ async function rankProgramsWithGroq({ student, programs }) {
     })),
   };
 
-  const response = await axios.post(
-    `${env.groqBaseUrl}/chat/completions`,
-    {
-      model: env.groqModel,
-      temperature: 0.2,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a study-abroad recommendation engine. Return ONLY valid JSON with this shape: {\"recommendations\":[{\"programId\":\"string\",\"matchScore\":number,\"reasons\":[\"string\"]}]}. Keep matchScore between 0 and 100 and include at most 5 recommendations.",
-        },
-        {
-          role: "user",
-          content: JSON.stringify(promptPayload),
-        },
-      ],
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${env.groqApiKey}`,
-        "Content-Type": "application/json",
+  try {
+    const response = await axios.post(
+      `${env.groqBaseUrl}/chat/completions`,
+      {
+        model: env.groqModel,
+        temperature: 0.2,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a study-abroad recommendation engine. Return ONLY valid JSON with this shape: {\"recommendations\":[{\"programId\":\"string\",\"matchScore\":number,\"reasons\":[\"string\"]}]}. Keep matchScore between 0 and 100 and include at most 5 recommendations.",
+          },
+          {
+            role: "user",
+            content: JSON.stringify(promptPayload),
+          },
+        ],
       },
-      timeout: env.groqTimeoutMs,
-    },
-  );
+      {
+        headers: {
+          Authorization: `Bearer ${env.groqApiKey}`,
+          "Content-Type": "application/json",
+        },
+        timeout: env.groqTimeoutMs,
+      },
+    );
 
-  const content = response.data?.choices?.[0]?.message?.content || "";
-  const parsed = JSON.parse(extractJson(content));
+    const content = response.data?.choices?.[0]?.message?.content || "";
+    const parsed = JSON.parse(extractJson(content));
 
-  return sanitizeRecommendations(parsed.recommendations).slice(0, 5);
+    return sanitizeRecommendations(parsed.recommendations).slice(0, 5);
+  } catch (error) {
+    const wrappedError = new Error(
+      error.code === "ECONNABORTED"
+        ? "Groq recommendation request timed out."
+        : "Groq recommendation request failed.",
+    );
+    wrappedError.cause = error;
+    throw wrappedError;
+  }
 }
 
 module.exports = {

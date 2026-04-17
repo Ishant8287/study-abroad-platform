@@ -1,12 +1,32 @@
-﻿const University = require("../models/University");
+const mongoose = require("mongoose");
+const University = require("../models/University");
 const cacheService = require("../services/cacheService");
 const asyncHandler = require("../utils/asyncHandler");
+const HttpError = require("../utils/httpError");
 
 function parseBoolean(value) {
   if (value === "true") return true;
   if (value === "false") return false;
   return undefined;
 }
+
+const getUniversityById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new HttpError(400, "Invalid university id.");
+  }
+
+  const university = await University.findById(id).lean();
+  if (!university) {
+    throw new HttpError(404, "University not found.");
+  }
+
+  res.json({
+    success: true,
+    data: university,
+  });
+});
 
 const listUniversities = asyncHandler(async (req, res) => {
   const {
@@ -104,6 +124,7 @@ const listPopularUniversities = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  getUniversityById,
   listPopularUniversities,
   listUniversities,
 };
