@@ -2,6 +2,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const HttpError = require("../utils/httpError");
 const {
   buildProgramRecommendations,
+  getPreferredRecommendationEngine,
 } = require("../services/recommendationService");
 const cacheService = require("../services/cacheService");
 
@@ -16,8 +17,9 @@ const getRecommendations = asyncHandler(async (req, res) => {
     throw new HttpError(403, "You are not authorised to view these recommendations.");
   }
 
-  const cacheKey = `recommendations-${studentId}`;
-  const cached = cacheService.get(cacheKey);
+  const preferredEngine = getPreferredRecommendationEngine();
+  const cacheKey = `recommendations-${studentId}-${preferredEngine}`;
+  const cached = await cacheService.get(cacheKey);
 
   if (cached) {
     return res.json({
@@ -28,7 +30,7 @@ const getRecommendations = asyncHandler(async (req, res) => {
   }
 
   const payload = await buildProgramRecommendations(studentId);
-  cacheService.set(cacheKey, payload);
+  await cacheService.set(cacheKey, payload);
 
   res.json({
     success: true,

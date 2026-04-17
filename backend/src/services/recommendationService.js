@@ -1,8 +1,26 @@
 const Program = require("../models/Program");
 const Student = require("../models/Student");
 const HttpError = require("../utils/httpError");
+const env = require("../config/env");
+const { rankProgramsWithGroq } = require("./groqService");
 
-async function buildProgramRecommendations(studentId) {
+function withEngineMeta(payload, engine, fallbackFrom = null) {
+  const meta = {
+    ...(payload.meta || {}),
+    engine,
+  };
+
+  if (fallbackFrom) {
+    meta.fallbackFrom = fallbackFrom;
+  }
+
+  return {
+    ...payload,
+    meta,
+  };
+}
+
+async function buildRuleBasedProgramRecommendations(studentId) {
   const student = await Student.findById(studentId).lean();
 
   if (!student) {
@@ -164,4 +182,112 @@ async function buildProgramRecommendations(studentId) {
   };
 }
 
-module.exports = { buildProgramRecommendations };
+async function buildGroqProgramRecommendations(studentId) {
+  const student = await Student.findById(studentId).lean();
+
+  if (!student) {
+    throw new HttpError(404, "Student not found.");
+  }
+
+  const candidates = await Program.find({
+    country: { $in: student.targetCountries },
+  })
+    .limit(30)
+    .lean();
+
+  if (!candidates.length) {
+    return {
+      data: {
+        student: {
+          id: student._id,
+          fullName: student.fullName,
+          targetCountries: student.targetCountries,
+          interestedFields: student.interestedFields,
+        },
+        recommendations: [],
+      },
+      meta: {
+        total: 0,
+      },
+    };
+  }
+
+  const ranked = await rankProgramsWithGroq({ student, programs: candidates });
+  if (!ranked.length) {
+    throw new Error("Groq returned no usable recommendations.");
+  }
+
+  const programById = new Map(
+    candidates.map((program) => [String(program._id), program]),
+  );
+
+  const recommendations = ranked
+    .map((item) => {
+      const program = programById.get(item.programId);
+      if (!program) {
+        return null;
+      }
+
+      return {
+        title: program.title,
+        field: program.field,
+        country: program.country,
+        city: program.city,
+        universityName: program.universityName,
+        degreeLevel: program.degreeLevel,
+        tuitionFeeUsd: program.tuitionFeeUsd,
+        intakes: program.intakes,
+        minimumIelts: program.minimumIelts,
+        scholarshipAvailable: program.scholarshipAvailable,
+        matchScore: item.matchScore,
+        reasons: item.reasons,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.matchScore - a.matchScore)
+    .slice(0, 5);
+
+  return {
+    data: {
+      student: {
+        id: student._id,
+        fullName: student.fullName,
+        targetCountries: student.targetCountries,
+        interestedFields: student.interestedFields,
+      },
+      recommendations,
+    },
+    meta: {
+      total: recommendations.length,
+    },
+  };
+}
+
+function getPreferredRecommendationEngine() {
+  return env.groqApiKey ? "groq" : "rule-based";
+}
+
+async function buildProgramRecommendations(studentId) {
+  if (!env.groqApiKey) {
+    const payload = await buildRuleBasedProgramRecommendations(studentId);
+    return withEngineMeta(payload, "rule-based");
+  }
+
+  try {
+    const payload = await buildGroqProgramRecommendations(studentId);
+    return withEngineMeta(payload, "groq");
+  } catch (error) {
+    console.warn(
+      "Groq recommendations failed. Falling back to rule-based recommendations.",
+      error.message,
+    );
+    const payload = await buildRuleBasedProgramRecommendations(studentId);
+    return withEngineMeta(payload, "rule-based", "groq");
+  }
+}
+
+module.exports = {
+  buildProgramRecommendations,
+  buildRuleBasedProgramRecommendations,
+  getPreferredRecommendationEngine,
+};

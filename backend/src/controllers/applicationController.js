@@ -70,7 +70,7 @@ const createApplication = asyncHandler(async (req, res) => {
   });
 
   // Invalidate dashboard cache since application count has changed
-  cacheService.delete("dashboard-overview");
+  await cacheService.delete("dashboard-overview");
 
   res.status(201).json({
     success: true,
@@ -116,7 +116,7 @@ const updateApplicationStatus = asyncHandler(async (req, res) => {
   await application.save();
 
   // Invalidate dashboard cache since status breakdown has changed
-  cacheService.delete("dashboard-overview");
+  await cacheService.delete("dashboard-overview");
 
   res.json({
     success: true,
