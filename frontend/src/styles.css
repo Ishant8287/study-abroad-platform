@@ -64,16 +64,16 @@
 
 /* ─── Light Theme ──────────────────────────────────────────── */
 [data-theme="light"] {
-  --bg-primary: #f5f5fa;
-  --bg-secondary: #eeeef5;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
   --bg-surface: rgba(255,255,255,0.8);
-  --bg-surface-hover: rgba(255,255,255,0.95);
+  --bg-surface-hover: #f1f5f9;
   --bg-surface-solid: #ffffff;
 
-  --accent: #6c5ce7;
-  --accent-light: #5a4bd1;
-  --accent-2: #00b894;
-  --accent-2-light: #00a381;
+  --accent: #2563eb;
+  --accent-light: #3b82f6;
+  --accent-2: #0284c7;
+  --accent-2-light: #38bdf8;
 
   --text-primary: #1a1a2e;
   --text-secondary: #5a5a7a;

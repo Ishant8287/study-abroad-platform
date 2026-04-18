@@ -35,12 +35,16 @@ export const api = {
   popularUniversities: () => request("/universities/popular"),
 
   programs: (params) => request(`/programs?${query(params)}`),
+  program: (id) => request(`/programs/${id}`),
 
   dashboard: () => request("/dashboard/overview"),
   recommendations: (studentId = "me") => request(`/recommendations/${studentId}`),
 
   applications: (params = {}) => request(`/applications?${query(params)}`),
+  application: (id) => request(`/applications/${id}`),
   createApplication: (body) => request("/applications", { method: "POST", body: JSON.stringify(body) }),
   updateApplicationStatus: (id, body) =>
     request(`/applications/${id}/status`, { method: "PATCH", body: JSON.stringify(body) }),
+
+  adminStudents: (params = {}) => request(`/admin/students?${query(params)}`),
 };

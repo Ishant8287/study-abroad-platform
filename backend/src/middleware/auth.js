@@ -32,6 +32,19 @@ const requireAuth = asyncHandler(async (req, res, next) => {
   next();
 });
 
+const requireRole = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      throw new HttpError(401, "Authentication required.");
+    }
+    if (!roles.includes(req.user.role)) {
+      throw new HttpError(403, "Insufficient permissions.");
+    }
+    next();
+  };
+};
+
 module.exports = {
   requireAuth,
+  requireRole,
 };

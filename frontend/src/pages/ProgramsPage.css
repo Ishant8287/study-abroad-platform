@@ -18,7 +18,7 @@
   top: 100px;
   max-height: calc(100vh - 120px);
   overflow-y: auto;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
 .filters-sidebar::-webkit-scrollbar {
@@ -201,13 +201,13 @@
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
 .program-card:hover {
   transform: translateY(-5px);
   border-color: #bfdbfe;
-  box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
 }
 
 .card-top {

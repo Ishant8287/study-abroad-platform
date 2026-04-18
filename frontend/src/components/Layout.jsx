@@ -6,10 +6,9 @@ import "./Layout.css";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: "📊", end: true },
-  { to: "/dashboard/universities", label: "Universities", icon: "🏛️" },
   { to: "/dashboard/programs", label: "Programs", icon: "📋" },
-  { to: "/dashboard/applications", label: "Applications", icon: "📄" },
   { to: "/dashboard/recommendations", label: "Recommendations", icon: "💡" },
+  { to: "/dashboard/applications", label: "Applications", icon: "📄" },
   { to: "/dashboard/profile", label: "Profile", icon: "👤" },
 ];
 
@@ -27,8 +26,13 @@ export default function Layout() {
   const user = getUser();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
+  const currentTheme = document.documentElement.getAttribute("data-theme") || "light";
   const [theme, setTheme] = useState(currentTheme);
+
+  useState(() => {
+    document.documentElement.setAttribute("data-theme", "light");
+    localStorage.setItem("sv_theme", "light");
+  });
 
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";

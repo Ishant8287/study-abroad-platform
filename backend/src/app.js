@@ -5,6 +5,7 @@ const morgan = require("morgan");
 
 const applicationRoutes = require("./routes/applicationRoutes");
 const authRoutes = require("./routes/authRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const documentRoutes = require("./routes/documentRoutes");
 const healthRoutes = require("./routes/healthRoutes");
@@ -37,6 +38,7 @@ app.use(morgan(env.nodeEnv === "production" ? "combined" : "dev"));
 
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/universities", universityRoutes);
 app.use("/api/programs", programRoutes);
 app.use("/api/recommendations", recommendationRoutes);

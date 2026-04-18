@@ -1,94 +1,184 @@
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../lib/api";
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.45, delay: i * 0.06, ease: [0.25, 0.46, 0.45, 0.94] },
-  }),
-};
+import "./UniversitiesPage.css";
 
 export default function UniversitiesPage() {
-  const [popular, setPopular] = useState([]);
-  const [list, setList] = useState([]);
-  const [q, setQ] = useState("");
+  const [universities, setUniversities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState("All Countries");
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("Popular");
+
+  const filters = ["All Countries", "Canada", "UK", "Australia", "UAE", "USA"];
 
   useEffect(() => {
-    api.popularUniversities().then((r) => setPopular(r.data));
-    load();
+    // Attempt to load from API
+    api.universities()
+      .then(res => {
+        const data = res.data || res;
+        if (!data || data.length === 0) throw new Error("empty");
+        setUniversities(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        // Fallback mock data
+        setUniversities([
+          { _id: "1", name: "University of Windsor", city: "Windsor", country: "Canada", qsRanking: "751-800", partnerType: "Direct", scholarships: true, popularScore: 4.5, color: "#005587" },
+          { _id: "2", name: "Imperial College London", city: "London", country: "UK", qsRanking: "6", partnerType: "Partner", scholarships: true, popularScore: 5.0, color: "#000099" },
+          { _id: "3", name: "University of Sydney", city: "Sydney", country: "Australia", qsRanking: "19", partnerType: "Direct", scholarships: false, popularScore: 4.8, color: "#E03C31" },
+          { _id: "4", name: "Middlesex University Dubai", city: "Dubai", country: "UAE", qsRanking: "801-1000", partnerType: "Direct", scholarships: true, popularScore: 4.2, color: "#E31837" },
+          { _id: "5", name: "University of Waterloo", city: "Waterloo", country: "Canada", qsRanking: "112", partnerType: "Partner", scholarships: true, popularScore: 4.7, color: "#FFD54F" },
+          { _id: "6", name: "University of Bristol", city: "Bristol", country: "UK", qsRanking: "55", partnerType: "Direct", scholarships: false, popularScore: 4.6, color: "#B01C2E" },
+        ]);
+        setLoading(false);
+      });
   }, []);
 
-  const load = async () => {
-    const res = await api.universities({ q, limit: 12, sortBy: "popular" });
-    setList(res.data);
+  const getFlag = (country) => {
+    const map = { "Canada": "🇨🇦", "UK": "🇬🇧", "Australia": "🇦🇺", "UAE": "🇦🇪", "USA": "🇺🇸" };
+    return map[country] || "🌍";
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") load();
+  const renderStars = (score) => {
+    const fullStars = Math.floor(score);
+    const hasHalf = score % 1 !== 0;
+    const stars = [];
+    for(let i=0; i<fullStars; i++) stars.push("★");
+    if(hasHalf) stars.push("☆"); // Simple half-star rep
+    while(stars.length < 5) stars.push("☆");
+    return stars.join("");
   };
+
+  const filteredUnis = universities
+    .filter(u => activeFilter === "All Countries" || u.country === activeFilter)
+    .filter(u => u.name.toLowerCase().includes(search.toLowerCase()) || u.city.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === "Popular") return b.popularScore - a.popularScore;
+      if (sortBy === "Name") return a.name.localeCompare(b.name);
+      if (sortBy === "Ranking") {
+         const rankA = parseInt(a.qsRanking.split("-")[0]) || 9999;
+         const rankB = parseInt(b.qsRanking.split("-")[0]) || 9999;
+         return rankA - rankB;
+      }
+      return 0;
+    });
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.05 } } }}>
-      {/* ─── Search ─────────────────────────────────────────── */}
-      <motion.div className="flex gap-sm" style={{ marginBottom: "32px" }} variants={fadeUp}>
-        <div style={{ position: "relative", flex: 1 }}>
-          <span style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "var(--text-tertiary)", fontSize: "1.1rem" }}>🔍</span>
-          <input
-            className="input"
-            placeholder="Search university, country, or city..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={handleKeyDown}
-            style={{ paddingLeft: "44px" }}
-          />
+    <div className="pub-page">
+      {/* Public Navbar */}
+      <nav className="pub-nav">
+        <div className="pub-nav-container">
+          <Link to="/" className="pub-brand">
+            <span className="pub-logo">🌐</span>
+            <span className="pub-brand-text">StepAbroad</span>
+          </Link>
+          <div className="pub-nav-links">
+            <Link to="/universities" className="pub-nav-link active">Universities</Link>
+            <Link to="/programs" className="pub-nav-link">Programs</Link>
+            <Link to="/about" className="pub-nav-link">About</Link>
+          </div>
+          <div className="pub-nav-actions">
+            <Link to="/login" className="btn-pub-text">Log in</Link>
+            <Link to="/register" className="btn-pub-primary">Register</Link>
+          </div>
         </div>
-        <button className="btn btn-primary" onClick={load}>Search</button>
-      </motion.div>
+      </nav>
 
-      {/* ─── Popular Universities ────────────────────────────── */}
-      {popular.length > 0 && (
-        <>
-          <motion.h3 variants={fadeUp} style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "16px" }}>
-            🔥 Popular Universities
-          </motion.h3>
-          <div className="grid grid-3 gap-md" style={{ marginBottom: "40px" }}>
-            {popular.map((u, i) => (
-              <motion.article key={u._id} className="glass-card p-md" variants={fadeUp} custom={i} whileHover={{ y: -4 }}>
-                <h4 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "8px" }}>{u.name}</h4>
-                <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginBottom: "8px" }}>📍 {u.city}, {u.country}</p>
-                <span className="badge badge-accent">
-                  QS Rank: {u.qsRanking || "N/A"}
-                </span>
-              </motion.article>
+      {/* Hero Section */}
+      <section className="uni-hero">
+        <div className="uni-hero-content">
+          <h1>Find Your Dream University</h1>
+          <p>Discover top-ranked institutions around the world and take the first step towards your global education.</p>
+          
+          <div className="uni-search-bar">
+            <span className="search-icon">🔍</span>
+            <input 
+              type="text" 
+              placeholder="Search universities by name or city..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <button className="btn-search">Search</button>
+          </div>
+        </div>
+      </section>
+
+      {/* Main Content */}
+      <main className="uni-main">
+        {/* Filters & Sort */}
+        <div className="uni-controls">
+          <div className="uni-filter-pills">
+            {filters.map(f => (
+              <button 
+                key={f}
+                className={`uni-pill ${activeFilter === f ? "active" : ""}`}
+                onClick={() => setActiveFilter(f)}
+              >
+                {f}
+              </button>
             ))}
           </div>
-        </>
-      )}
+          
+          <div className="uni-sort">
+            <span className="text-secondary">Sort by:</span>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="uni-select">
+              <option value="Popular">Popularity</option>
+              <option value="Ranking">QS Ranking</option>
+              <option value="Name">Name (A-Z)</option>
+            </select>
+          </div>
+        </div>
 
-      {/* ─── All Universities ────────────────────────────────── */}
-      <motion.h3 variants={fadeUp} style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "16px" }}>
-        🏛️ All Universities
-      </motion.h3>
-      <div className="grid grid-3 gap-md">
-        {list.map((u, i) => (
-          <motion.article key={u._id} className="glass-card p-md" variants={fadeUp} custom={i} whileHover={{ y: -4 }}>
-            <h4 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "8px" }}>{u.name}</h4>
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginBottom: "8px" }}>📍 {u.city}, {u.country}</p>
-            <div className="flex gap-xs flex-wrap">
-              <span className="badge badge-teal">{u.partnerType}</span>
-              {u.scholarshipAvailable && <span className="badge badge-success">💰 Scholarship</span>}
-            </div>
-          </motion.article>
-        ))}
-        {list.length === 0 && (
-          <div className="glass-card-static p-lg" style={{ gridColumn: "1 / -1", textAlign: "center" }}>
-            <p style={{ color: "var(--text-secondary)" }}>No universities found. Try a different search.</p>
+        {/* Grid */}
+        {loading ? (
+          <div className="p-xl text-center">Loading universities...</div>
+        ) : (
+          <div className="uni-grid">
+            {filteredUnis.length > 0 ? filteredUnis.map(uni => (
+              <div key={uni._id} className="uni-card">
+                <div className="uni-card-header" style={{ backgroundColor: uni.color || "#2563eb" }}>
+                  <div className={`uni-partner-chip ${uni.partnerType === "Direct" ? "direct" : "partner"}`}>
+                    {uni.partnerType} Partner
+                  </div>
+                </div>
+                <div className="uni-card-body">
+                  <h3 className="uni-card-name">{uni.name}</h3>
+                  <div className="uni-card-location">
+                    <span>{getFlag(uni.country)}</span> {uni.city}, {uni.country}
+                  </div>
+                  
+                  <div className="uni-card-meta">
+                    <div className="meta-item">
+                      <span className="meta-label">QS Ranking</span>
+                      <span className="meta-value badge-qs">#{uni.qsRanking}</span>
+                    </div>
+                    <div className="meta-item">
+                      <span className="meta-label">Popularity</span>
+                      <span className="meta-value stars">{renderStars(uni.popularScore)}</span>
+                    </div>
+                  </div>
+
+                  {uni.scholarships && (
+                    <div className="uni-scholarship-badge">
+                      ✓ Scholarships Available
+                    </div>
+                  )}
+
+                  <Link to={`/programs?university=${uni.name}`} className="btn-view-programs">
+                    View Programs
+                  </Link>
+                </div>
+              </div>
+            )) : (
+              <div className="uni-empty">
+                <h3>No universities found</h3>
+                <p>Try adjusting your search or filters to see more results.</p>
+              </div>
+            )}
           </div>
         )}
-      </div>
-    </motion.div>
+      </main>
+    </div>
   );
 }

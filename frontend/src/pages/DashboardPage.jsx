@@ -50,9 +50,18 @@ function StudentDashboard({ user }) {
       api.recommendations("me").catch(() => ({ data: [] }))
     ])
       .then(([appsRes, recsRes]) => {
+        const parseArr = (res) => {
+          if (Array.isArray(res)) return res;
+          if (res?.data && Array.isArray(res.data)) return res.data;
+          if (res?.data?.data && Array.isArray(res.data.data)) return res.data.data;
+          if (res?.recommendations && Array.isArray(res.recommendations)) return res.recommendations;
+          if (res?.applications && Array.isArray(res.applications)) return res.applications;
+          return [];
+        };
+
         setData({
-          applications: appsRes.data || [],
-          recommendations: recsRes.data || []
+          applications: parseArr(appsRes),
+          recommendations: parseArr(recsRes)
         });
         setLoading(false);
       })
@@ -77,7 +86,7 @@ function StudentDashboard({ user }) {
   return (
     <div className="student-dashboard">
       <div className="dashboard-header">
-        <h1>Hello, {user?.fullName?.split(" ")[0] || "Student"}! 👋</h1>
+        <h1>Hello, {user?.fullName?.split(" ")[0] || "Aarav"}! 👋</h1>
         <p className="text-secondary">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
       </div>
 

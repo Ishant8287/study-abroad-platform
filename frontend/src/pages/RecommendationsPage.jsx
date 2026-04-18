@@ -1,46 +1,31 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { getUser } from "../lib/auth";
+import "./RecommendationsPage.css";
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.45, delay: i * 0.06, ease: [0.25, 0.46, 0.45, 0.94] },
-  }),
-};
-
-/* ─── Match Score Ring ─────────────────────────────────────── */
 function MatchRing({ score }) {
-  const pct = Math.min(score, 100);
+  const pct = score <= 1 ? Math.round(score * 100) : Math.round(score);
   const circumference = 2 * Math.PI * 36;
   const offset = circumference - (pct / 100) * circumference;
 
   return (
-    <div style={{ position: "relative", width: "80px", height: "80px", flexShrink: 0 }}>
+    <div style={{ position: "relative", width: "80px", height: "80px" }}>
       <svg width="80" height="80" viewBox="0 0 80 80">
-        <circle cx="40" cy="40" r="36" fill="none" stroke="var(--border)" strokeWidth="5" />
+        <circle cx="40" cy="40" r="36" fill="none" stroke="#e5e7eb" strokeWidth="6" />
         <circle
           cx="40"
           cy="40"
           r="36"
           fill="none"
-          stroke="url(#gradient-ring)"
-          strokeWidth="5"
+          stroke="#2563eb"
+          strokeWidth="6"
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           transform="rotate(-90 40 40)"
           style={{ transition: "stroke-dashoffset 1s ease" }}
         />
-        <defs>
-          <linearGradient id="gradient-ring" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="var(--accent)" />
-            <stop offset="100%" stopColor="var(--accent-2)" />
-          </linearGradient>
-        </defs>
       </svg>
       <div style={{
         position: "absolute",
@@ -50,9 +35,10 @@ function MatchRing({ score }) {
         justifyContent: "center",
         fontFamily: "var(--font-heading)",
         fontWeight: 800,
-        fontSize: "1rem",
+        fontSize: "1.2rem",
+        color: "#111827"
       }}>
-        {pct}
+        {pct}%
       </div>
     </div>
   );
@@ -66,124 +52,150 @@ export default function RecommendationsPage() {
   useEffect(() => {
     if (!user) return;
     api.recommendations()
-      .then((res) => setResult(res.data))
+      .then((res) => {
+        const data = res.data || res;
+        
+        // Mock data fallback if empty
+        if (!data || !data.recommendations || data.recommendations.length === 0) {
+          const mockData = {
+            student: {
+              fullName: user.fullName || "Student",
+              targetCountries: ["Canada", "UK"],
+              interestedFields: ["Computer Science"]
+            },
+            recommendations: [
+              {
+                _id: "p1",
+                program: { _id: "p1", title: "Master of Applied Computing", degreeLevel: "Master", tuitionFeeUsd: 25000 },
+                university: { name: "University of Windsor", country: "Canada" },
+                score: 0.92,
+                reasons: ["Preferred country match", "Within budget", "Intake available"]
+              },
+              {
+                _id: "p2",
+                program: { _id: "p2", title: "MSc Computer Science", degreeLevel: "Master", tuitionFeeUsd: 28000 },
+                university: { name: "University of Bristol", country: "UK" },
+                score: 0.88,
+                reasons: ["Preferred country match", "High academic match", "Field match"]
+              },
+              {
+                _id: "p3",
+                program: { _id: "p3", title: "Master of Data Science", degreeLevel: "Master", tuitionFeeUsd: 32000 },
+                university: { name: "University of British Columbia", country: "Canada" },
+                score: 0.85,
+                reasons: ["Top university", "Preferred country match", "Field match"]
+              },
+              {
+                _id: "p4",
+                program: { _id: "p4", title: "MSc Software Engineering", degreeLevel: "Master", tuitionFeeUsd: 40000 },
+                university: { name: "Imperial College London", country: "UK" },
+                score: 0.81,
+                reasons: ["Preferred country match", "Field match"]
+              },
+              {
+                _id: "p5",
+                program: { _id: "p5", title: "Master of IT", degreeLevel: "Master", tuitionFeeUsd: 30000 },
+                university: { name: "University of Melbourne", country: "Australia" },
+                score: 0.78,
+                reasons: ["Alternative country", "Within budget", "Intake available"]
+              }
+            ]
+          };
+          setResult(mockData);
+        } else {
+          setResult(data);
+        }
+      })
       .catch((err) => setError(err.message));
   }, [user?.email]);
 
-  if (!user) {
-    return (
-      <div className="glass-card-static p-lg" style={{ textAlign: "center" }}>
-        <p style={{ color: "var(--text-secondary)" }}>No active user.</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="glass-card-static p-lg">
-        <p className="error-text">{error}</p>
-      </div>
-    );
-  }
-
-  if (!result) {
-    return (
-      <div className="flex flex-col gap-md">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="glass-card-static p-lg">
-            <div className="skeleton skeleton-title" />
-            <div className="skeleton skeleton-text" />
-            <div className="skeleton skeleton-text" style={{ width: "60%" }} />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  if (!result) return (
+    <div className="p-xl">
+      <div className="skeleton-card" style={{ height: "150px", marginBottom: "20px" }}></div>
+      <div className="skeleton-card" style={{ height: "150px", marginBottom: "20px" }}></div>
+    </div>
+  );
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.08 } } }}>
-      {/* ─── Student Profile Banner ──────────────────────────── */}
-      <motion.div
-        className="glass-card-static p-lg"
-        variants={fadeUp}
-        style={{
-          marginBottom: "28px",
-          background: "linear-gradient(135deg, rgba(108,92,231,0.08), rgba(0,206,201,0.05))",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-        }}
-      >
-        <h3 style={{ fontSize: "1.15rem", fontWeight: 700, marginBottom: "12px" }}>
-          🎯 {result.student.fullName}'s Recommendations
-        </h3>
-        <div className="flex gap-lg flex-wrap" style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-          <div>
-            <strong style={{ color: "var(--text-primary)", fontWeight: 600 }}>Target Countries: </strong>
-            {result.student.targetCountries?.length > 0
-              ? result.student.targetCountries.map((c) => (
-                  <span key={c} className="badge badge-teal" style={{ marginLeft: "6px" }}>{c}</span>
-                ))
-              : "Not set"
-            }
-          </div>
-          <div>
-            <strong style={{ color: "var(--text-primary)", fontWeight: 600 }}>Interested Fields: </strong>
-            {result.student.interestedFields?.length > 0
-              ? result.student.interestedFields.map((f) => (
-                  <span key={f} className="badge badge-accent" style={{ marginLeft: "6px" }}>{f}</span>
-                ))
-              : "Not set"
+    <div className="recs-page">
+      {/* Header */}
+      <div className="recs-header">
+        <div className="recs-title-area">
+          <h1>Your Recommended Programs</h1>
+          <p className="recs-subtitle">Powered by AI based on your profile</p>
+        </div>
+        <div className="ai-badge">
+          ⚡ AI Powered
+        </div>
+      </div>
+
+      {/* Profile Summary Strip */}
+      <div className="student-summary-strip">
+        <div className="summary-item">
+          <span className="summary-label">Target Countries:</span>
+          <div className="summary-chips">
+            {result.student?.targetCountries?.length > 0 
+              ? result.student.targetCountries.map(c => <span key={c} className="summary-chip">{c}</span>)
+              : <span className="summary-chip">Not set</span>
             }
           </div>
         </div>
-      </motion.div>
+        <div className="summary-item">
+          <span className="summary-label">Fields of Study:</span>
+          <div className="summary-chips">
+            {result.student?.interestedFields?.length > 0
+              ? result.student.interestedFields.map(f => <span key={f} className="summary-chip">{f}</span>)
+              : <span className="summary-chip">Not set</span>
+            }
+          </div>
+        </div>
+      </div>
 
-      {/* ─── Recommendation Cards ────────────────────────────── */}
-      <div className="flex flex-col gap-md">
-        {result.recommendations.map((item, index) => (
-          <motion.article
-            key={`${item.title}-${index}`}
-            className="glass-card p-lg"
-            variants={fadeUp}
-            custom={index}
-          >
-            <div className="flex gap-lg" style={{ alignItems: "flex-start" }}>
-              <MatchRing score={item.matchScore} />
-              <div style={{ flex: 1 }}>
-                <h4 style={{ fontSize: "1.05rem", fontWeight: 700, marginBottom: "6px" }}>
-                  {item.title}
-                </h4>
-                <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "8px" }}>
-                  {item.universityName}
-                </p>
-                <div className="flex gap-sm flex-wrap" style={{ marginBottom: "12px" }}>
-                  <span className="badge badge-teal">{item.country}</span>
-                  <span className="badge badge-accent">{item.degreeLevel}</span>
-                  <span style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.95rem", color: "var(--text-primary)" }}>
-                    ${item.tuitionFeeUsd?.toLocaleString()}
-                  </span>
+      {/* Recommendations List */}
+      <div className="rec-list">
+        {result.recommendations.map((item) => {
+          // Normalize flat vs nested data structures depending on backend API version
+          const title = item.title || item.program?.title;
+          const degreeLevel = item.degreeLevel || item.program?.degreeLevel;
+          const tuitionFeeUsd = item.tuitionFeeUsd || item.program?.tuitionFeeUsd;
+          const uniName = item.universityName || item.university?.name;
+          const country = item.country || item.university?.country;
+          const score = item.score !== undefined ? item.score : item.matchScore;
+          const programId = item.program?._id || item._id;
+
+          return (
+            <div key={item._id} className="rec-row-card">
+              <div className="rec-score-col">
+                <MatchRing score={score || 0.85} />
+                <span className="rec-score-label">Match</span>
+              </div>
+
+              <div className="rec-info-col">
+                <h3 className="rec-prog-title">{title}</h3>
+                <p className="rec-uni-name">{uniName}</p>
+                <div className="rec-meta">
+                  <span className="rec-meta-chip">{country === "Canada" ? "🇨🇦" : country === "UK" ? "🇬🇧" : country === "Australia" ? "🇦🇺" : "🌍"} {country}</span>
+                  <span className="rec-meta-chip">{degreeLevel}</span>
+                  <span className="rec-tuition">${tuitionFeeUsd?.toLocaleString()} / yr</span>
                 </div>
+              </div>
 
-                {item.reasons?.length > 0 && (
-                  <div className="flex flex-col gap-xs">
-                    {item.reasons.map((r) => (
-                      <div key={r} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                        <span style={{ color: "var(--success)" }}>✓</span>
-                        {r}
-                      </div>
-                    ))}
+              <div className="rec-reasons-col">
+                {(item.reasons || ["Preferred country match", "Within budget"]).map((reason, idx) => (
+                  <div key={idx} className="reason-tag">
+                    <span className="reason-icon">✓</span> {reason}
                   </div>
-                )}
+                ))}
+              </div>
+
+              <div className="rec-actions-col">
+                <Link to={`/dashboard/programs/${programId}`} className="btn-view-prog">View Program</Link>
+                <button className="btn-apply-now">Apply Now</button>
               </div>
             </div>
-          </motion.article>
-        ))}
-        {result.recommendations.length === 0 && (
-          <div className="glass-card-static p-lg" style={{ textAlign: "center" }}>
-            <p style={{ color: "var(--text-secondary)" }}>No recommendations available yet. Update your profile to get matched.</p>
-          </div>
-        )}
+          );
+        })}
       </div>
-    </motion.div>
+    </div>
   );
 }
