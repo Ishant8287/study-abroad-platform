@@ -48,7 +48,14 @@ app.use("/api/documents", documentRoutes);
 app.get("/", (req, res) => {
   res.json({
     status: "success",
-    message: "StepAbroad API is running",
+    service: "StepAbroad API",
+    version: "v1",
+    docs: "/api/v1/docs",
+    endpoints: {
+      auth: "/api/v1/auth",
+      applications: "/api/applications",
+      universities: "/api/universities",
+    },
   });
 });
 
