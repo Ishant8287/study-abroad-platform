@@ -1,31 +1,53 @@
-# Study Abroad Platform
+# Step Abroad
 
-A backend REST API for a university discovery and student application management platform. Students can search universities, get personalized program recommendations, and track their application lifecycle from draft to enrollment.
+> Backend REST API for a university discovery and student application management platform.
 
----
-
-## Features
-
-- **JWT Authentication** — register, login, protected routes with role-based access (student / counselor)
-- **Recommendation Engine** — built entirely with MongoDB aggregation pipeline, not in-memory JS scoring. Weighted scoring across country match, field match, budget, intake availability, and IELTS score
-- **Application Lifecycle** — strict status transition enforcement (draft → submitted → under-review → offer-received → visa-processing → enrolled / rejected) with full audit trail via timeline array
-- **University & Program Discovery** — filter by country, degree level, field, budget, intake, scholarship availability with full pagination and sorting
-- **TTL-based Caching** — in-memory cache for high-traffic endpoints (popular universities, recommendations, dashboard). Cache TTL configurable via environment variable
-- **Compound Indexing** — duplicate prevention at DB level via compound unique index on `{student, program, intake}`. Optimized query indexes on all filter fields
-- **Automated Tests** — covers registration, duplicate prevention, login, wrong password, and protected route auth
+Students can search universities, get personalized program recommendations, and track their full application lifecycle — from draft to enrollment.
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
+| Layer | Tech |
 |---|---|
 | Runtime | Node.js 20 + Express 4 |
 | Database | MongoDB + Mongoose |
-| Auth | JWT (jsonwebtoken) + bcrypt |
+| Auth | JWT + bcrypt |
 | Caching | In-memory TTL Map (Redis-ready) |
 | Testing | Jest + Supertest |
-| Dev | Nodemon, Morgan |
+
+---
+
+## Key Features
+
+- **JWT Auth** — register, login, role-based access (student / counselor)
+- **Recommendation Engine** — built entirely on MongoDB aggregation pipeline with weighted scoring across country, field, budget, intake, and IELTS score
+- **Application Lifecycle** — strict FSM-based status transitions (draft → submitted → under review → offer received → visa processing → enrolled / rejected) with full audit trail
+- **University & Program Discovery** — filter by country, degree, field, budget, intake, scholarship with pagination and sorting
+- **TTL Caching** — in-memory cache on high-read endpoints (popular universities, recommendations, dashboard). Configurable TTL via env
+- **Compound Indexing** — duplicate applications prevented at DB level via `{student, program, intake}` unique index
+- **Automated Tests** — registration, duplicate prevention, login, wrong password, protected route auth
+
+---
+
+## Architecture Decisions
+
+### Recommendation Engine
+Scoring and filtering happen entirely inside MongoDB's aggregation pipeline — no in-memory JS scoring. Scales with data.
+
+| Signal | Weight |
+|---|---|
+| Country match | +35 |
+| Field match | +30 |
+| Within budget | +20 |
+| Preferred intake available | +10 |
+| IELTS score meets minimum | +5 |
+
+### Caching Strategy
+High-read, low-write endpoints use a TTL-based in-memory Map. Designed as a drop-in replacement for Redis — only `cacheService.js` needs to change.
+
+### Application Status Transitions
+Valid transitions are defined in `config/constants.js`. Every status update is validated against this map — no skipping steps, no invalid rollbacks. Each change appends to a `timeline` array.
 
 ---
 
@@ -34,29 +56,22 @@ A backend REST API for a university discovery and student application management
 ```
 backend/
 ├── src/
-│   ├── config/          # DB connection, env validation, constants
-│   ├── controllers/     # Request/response logic per feature
+│   ├── config/          # DB, env validation, constants
+│   ├── controllers/     # Request/response logic
 │   ├── middleware/      # Auth, error handler, 404
-│   ├── models/          # Mongoose schemas (Student, University, Program, Application)
+│   ├── models/          # Student, University, Program, Application
 │   ├── routes/          # Express routers
-│   ├── services/        # Business logic (recommendation engine, cache)
+│   ├── services/        # Recommendation engine, cache
 │   ├── utils/           # asyncHandler, HttpError
 │   ├── scripts/         # DB seed script
 │   ├── tests/           # Jest test suites
-│   ├── app.js           # Express app setup
-│   └── server.js        # HTTP server entry point
+│   ├── app.js
+│   └── server.js
 ```
 
 ---
 
 ## Getting Started
-
-### Prerequisites
-
-- Node.js v18+
-- MongoDB running locally
-
-### Setup
 
 ```bash
 git clone https://github.com/Ishant8287/study-abroad-platform
@@ -67,29 +82,17 @@ npm run seed
 npm run dev
 ```
 
-
-### Run Frontend
-
-```bash
-cd frontend
-npm install
-cp .env.example .env
-npm run dev
-```
-
-Frontend runs by default on `http://localhost:5173` and expects backend at `http://localhost:4000/api`.
-
 ### Environment Variables
 
 | Variable | Description | Default |
 |---|---|---|
 | PORT | Server port | 4000 |
 | MONGODB_URI | MongoDB connection string | mongodb://127.0.0.1:27017/study-abroad |
-| JWT_SECRET | Secret for signing JWTs. Required outside development and test. | — |
+| JWT_SECRET | Required in production | — |
 | JWT_EXPIRES_IN | Token expiry | 1d |
-| CACHE_TTL_SECONDS | Cache TTL in seconds | 300 |
+| CACHE_TTL_SECONDS | Cache TTL | 300 |
 
-### Sample Credentials (after seed)
+### Test Credentials (after seed)
 
 - Student: `aarav@example.com` / `Candidate123!`
 - Counselor: `counselor@example.com` / `Candidate123!`
@@ -99,7 +102,6 @@ Frontend runs by default on `http://localhost:5173` and expects backend at `http
 ## API Reference
 
 ### Auth
-
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | POST | /api/auth/register | No | Register new user |
@@ -107,64 +109,33 @@ Frontend runs by default on `http://localhost:5173` and expects backend at `http
 | GET | /api/auth/me | Yes | Get own profile |
 
 ### Universities
-
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | GET | /api/universities | No | List with filters + pagination |
 | GET | /api/universities/popular | No | Top 6 by popularity (cached) |
 
 ### Programs
-
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | GET | /api/programs | Yes | Filter by country, field, degree, budget, intake |
 
 ### Recommendations
-
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| GET | /api/recommendations/me | Yes | Get the signed-in student's top 5 program matches |
-| GET | /api/recommendations/:studentId | Yes | Aggregation-based top 5 program matches |
+| GET | /api/recommendations/me | Yes | Top 5 matches for signed-in student |
+| GET | /api/recommendations/:studentId | Yes | Top 5 matches by student ID |
 
 ### Applications
-
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | POST | /api/applications | Yes | Apply to a program |
-| GET | /api/applications | Yes | List applications with filters |
+| GET | /api/applications | Yes | List with filters |
 | PATCH | /api/applications/:id/status | Yes | Update status (strict transition enforcement) |
 
 ### Dashboard
-
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| GET | /api/dashboard/overview | Yes | Total stats + status breakdown + top countries (cached) |
-
----
-
-## Architecture Decisions
-
-### Recommendation Engine
-Built using MongoDB aggregation pipeline instead of fetching all programs to JS and scoring in-memory. This means filtering, scoring, and sorting all happen at the database level — significantly better performance as data grows.
-
-Scoring weights:
-- Country match: +35
-- Field match: +30
-- Within budget: +20
-- Preferred intake available: +10
-- IELTS score meets minimum: +5
-
-### Caching Strategy
-High-read, low-write endpoints (popular universities, dashboard overview, recommendations) use a TTL-based in-memory Map. Cache TTL is configurable via env. The service is designed as a drop-in replacement for Redis — swapping it out requires changing only `cacheService.js`.
-
-### Indexing Strategy
-- `Application`: compound unique index on `{student, program, intake}` prevents duplicate applications at the DB level, not just in application code
-- `Application`: individual indexes on `student`, `program`, `status`, `destinationCountry` for filtered list queries
-- `Program`: compound index on `{country, degreeLevel, field, tuitionFeeUsd}` covering the most common filter combination
-- `University`: text index on `{name, country, city}` for search, plus index on `popularScore` for ranking queries
-
-### Application Status Transitions
-Valid transitions are defined in `config/constants.js`. Every `PATCH /status` request is validated against this map — no skipping steps, no invalid rollbacks. Every change appends to a `timeline` array for a full audit trail.
+| GET | /api/dashboard/overview | Yes | Stats + status breakdown + top countries (cached) |
 
 ---
 
@@ -174,15 +145,18 @@ Valid transitions are defined in `config/constants.js`. Every `PATCH /status` re
 npm test
 ```
 
-Covers: registration, duplicate email, login, wrong password, protected route auth.
-
 ---
 
-## What I'd Improve With More Time
+## What I'd Improve
 
 - Replace in-memory cache with Redis for multi-instance support
 - Add Zod validation on all request bodies
-- Add refresh token rotation with httpOnly cookies
-- Add rate limiting on auth endpoints
-- Paginate the applications list endpoint
-- Add RBAC — counselors should be able to manage any student's application, students only their own
+- Refresh token rotation with httpOnly cookies
+- Rate limiting on auth endpoints
+- Full RBAC — counselors manage any student's application, students only their own
+
+---
+
+## License
+
+MIT
